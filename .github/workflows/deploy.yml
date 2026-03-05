@@ -1,28 +1,48 @@
 name: Deploy Application
-
+ 
 on:
   push:
     branches:
       - main
-
+ 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
+ 
     steps:
-
-      - name: Checkout Repository
+      - name: Checkout repository
         uses: actions/checkout@v3
-
-      - name: Deploy to EC2
-        uses: appleboy/ssh-action@master
+ 
+      - name: Deploy application on EC2
+        uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.EC2_HOST }}
-          username: ${{ secrets.EC2_USER }}
+          username: ec2-user
           key: ${{ secrets.EC2_SSH_KEY }}
           script: |
-            cd /home/ubuntu/2-tier-monitoring
+            cd ~/2-tier-monitoring
             git pull origin main
-            docker compose down
-            docker compose build
-            docker compose up -d
+ 
+            docker rm -f flask-app || true
+            docker rm -f mysql-db || true
+ 
+            docker build -t mysql-db ./mysql
+            docker build -t flask-app ./app
+ 
+            docker run -d --name mysql-db \
+              --network flask-mysql-network \
+              -e MYSQL_ROOT_PASSWORD=root123 \
+              -e MYSQL_DATABASE=employees \
+              -p 3306:3306 mysql-db
+ 
+            sleep 10
+ 
+            docker run -d --name flask-app \
+              --network flask-mysql-network \
+              -p 8080:8080 \
+              -e DBHOST=mysql-db \
+              -e DBPORT=3306 \
+              -e DBUSER=root \
+              -e DBPWD=root123 \
+              -e DATABASE=employees \
+              flask-app
