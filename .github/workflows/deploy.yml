@@ -7,7 +7,6 @@ on:
 
 jobs:
   deploy:
-
     runs-on: ubuntu-latest
 
     steps:
@@ -25,4 +24,5 @@ jobs:
             cd /home/ubuntu/2-tier-monitoring
             git pull origin main
             docker compose down
-            docker compose up -d --build
+            docker compose build
+            docker compose up -d
